@@ -13,7 +13,8 @@
 #
 # Every policy includes:
 #   - background: true        -> retroactively apply to existing namespaces
-#   - synchronize: true       -> Kyverno owns the resource, reverts drift
+#   - synchronize: true       -> Roles: Kyverno owns the resource, reverts drift
+#   - synchronize: false      -> RoleBindings: allows self-service subject patching
 #   - preconditions DELETE-guard with BACKGROUND fallback
 # =============================================================================
 
@@ -136,7 +137,7 @@ spec:
         kind: RoleBinding
         name: operator
         namespace: "{{ request.object.metadata.name }}"
-        synchronize: true
+        synchronize: false
         data:
           roleRef:
             apiGroup: rbac.authorization.k8s.io
@@ -168,7 +169,7 @@ spec:
         kind: RoleBinding
         name: contributor
         namespace: "{{ request.object.metadata.name }}"
-        synchronize: true
+        synchronize: false
         data:
           roleRef:
             apiGroup: rbac.authorization.k8s.io
@@ -200,7 +201,7 @@ spec:
         kind: RoleBinding
         name: viewer
         namespace: "{{ request.object.metadata.name }}"
-        synchronize: true
+        synchronize: false
         data:
           roleRef:
             apiGroup: rbac.authorization.k8s.io
