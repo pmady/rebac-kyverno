@@ -1,0 +1,18 @@
+---
+# =============================================================================
+# Tenant trigger — creates a single namespace that fires all 6 ClusterPolicies.
+# Labels follow a standard tenant convention; only the Namespace kind is
+# required to trigger generation, but labels are kept for downstream tooling
+# (monitoring tags, audit reports, validate policies).
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tenant-demo
+  labels:
+    tenant.platform.io/owner: "platform-engineering"
+    tenant.platform.io/tier: "standard"
+    rebac.platform.io/managed: "true"
+  annotations:
+    rebac.platform.io/created-by: "kyvernocon-demo"
+    rebac.platform.io/notes: "KyvernoCon 2026 live demo namespace"

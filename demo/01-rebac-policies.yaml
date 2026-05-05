@@ -1,0 +1,209 @@
+---
+# =============================================================================
+# ReBAC with Kyverno — KyvernoCon Virtual 2026 Demo
+# Speaker: Pavan Madduri (CNCF Golden Kubestronaut)
+#
+# Status: INCUBATING — reference implementation, not production-ready.
+# Source: rbac-baba-migration (active development).
+#
+# 6 ClusterPolicies:
+#   1. generate-operator-role        2. generate-contributor-role
+#   3. generate-viewer-role          4. generate-operator-binding
+#   5. generate-contributor-binding  6. generate-viewer-binding
+#
+# Every policy includes:
+#   - background: true        -> retroactively apply to existing namespaces
+#   - synchronize: true       -> Kyverno owns the resource, reverts drift
+#   - preconditions DELETE-guard with BACKGROUND fallback
+# =============================================================================
+
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: generate-operator-role
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: create-operator-role
+      match:
+        any:
+          - resources:
+              kinds: [Namespace]
+      preconditions:
+        all:
+          - key: "{{ request.operation || 'BACKGROUND' }}"
+            operator: NotEquals
+            value: DELETE
+      generate:
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: Role
+        name: operator
+        namespace: "{{ request.object.metadata.name }}"
+        synchronize: true
+        data:
+          rules:
+            - apiGroups: ["*"]
+              resources: ["*"]
+              verbs: ["*"]
+
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: generate-contributor-role
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: create-contributor-role
+      match:
+        any:
+          - resources:
+              kinds: [Namespace]
+      preconditions:
+        all:
+          - key: "{{ request.operation || 'BACKGROUND' }}"
+            operator: NotEquals
+            value: DELETE
+      generate:
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: Role
+        name: contributor
+        namespace: "{{ request.object.metadata.name }}"
+        synchronize: true
+        data:
+          rules:
+            - apiGroups: ["*"]
+              resources: ["*"]
+              verbs: ["create", "get", "list", "watch", "update", "patch"]
+
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: generate-viewer-role
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: create-viewer-role
+      match:
+        any:
+          - resources:
+              kinds: [Namespace]
+      preconditions:
+        all:
+          - key: "{{ request.operation || 'BACKGROUND' }}"
+            operator: NotEquals
+            value: DELETE
+      generate:
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: Role
+        name: viewer
+        namespace: "{{ request.object.metadata.name }}"
+        synchronize: true
+        data:
+          # NOTE: nonResourceURLs intentionally omitted — only valid in ClusterRole.
+          # See talk Slide 7 ("The nonResourceURLs trap").
+          rules:
+            - apiGroups: ["*"]
+              resources: ["*"]
+              verbs: ["get", "list", "watch"]
+
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: generate-operator-binding
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: create-operator-binding
+      match:
+        any:
+          - resources:
+              kinds: [Namespace]
+      preconditions:
+        all:
+          - key: "{{ request.operation || 'BACKGROUND' }}"
+            operator: NotEquals
+            value: DELETE
+      generate:
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        name: operator
+        namespace: "{{ request.object.metadata.name }}"
+        synchronize: true
+        data:
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: Role
+            name: operator
+          subjects: []   # empty by design — populated via self-service patch
+
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: generate-contributor-binding
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: create-contributor-binding
+      match:
+        any:
+          - resources:
+              kinds: [Namespace]
+      preconditions:
+        all:
+          - key: "{{ request.operation || 'BACKGROUND' }}"
+            operator: NotEquals
+            value: DELETE
+      generate:
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        name: contributor
+        namespace: "{{ request.object.metadata.name }}"
+        synchronize: true
+        data:
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: Role
+            name: contributor
+          subjects: []
+
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: generate-viewer-binding
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: create-viewer-binding
+      match:
+        any:
+          - resources:
+              kinds: [Namespace]
+      preconditions:
+        all:
+          - key: "{{ request.operation || 'BACKGROUND' }}"
+            operator: NotEquals
+            value: DELETE
+      generate:
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        name: viewer
+        namespace: "{{ request.object.metadata.name }}"
+        synchronize: true
+        data:
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: Role
+            name: viewer
+          subjects: []

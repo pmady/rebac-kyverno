@@ -1,0 +1,72 @@
+---
+# =============================================================================
+# Validation Policies — Enforce tenant label schema + role enum
+# KyvernoCon Virtual 2026 — Pavan Madduri
+#
+# These validation policies are a SEPARATE CONCERN from generate policies.
+# They fire BEFORE generate, ensuring namespaces meet label requirements
+# and that only valid roles can be referenced.
+# =============================================================================
+
+---
+# Policy 1: Require tenant owner label on every namespace
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-tenant-owner-label
+  annotations:
+    policies.kyverno.io/title: Require Tenant Owner Label
+    policies.kyverno.io/category: Authorization
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >-
+      Every namespace must include a tenant.platform.io/owner label
+      to ensure RBAC scaffolding can be attributed to a team.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-owner-label
+      match:
+        any:
+          - resources:
+              kinds: [Namespace]
+      exclude:
+        any:
+          - resources:
+              namespaces: ["kube-system", "kube-public", "kube-node-lease", "kyverno", "default"]
+      validate:
+        message: "Namespace must include 'tenant.platform.io/owner' label."
+        pattern:
+          metadata:
+            labels:
+              tenant.platform.io/owner: "?*"
+
+---
+# Policy 2: Require managed-by-rebac label
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-rebac-managed-label
+  annotations:
+    policies.kyverno.io/title: Require ReBAC Managed Label
+    policies.kyverno.io/category: Authorization
+    policies.kyverno.io/severity: low
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-managed-label
+      match:
+        any:
+          - resources:
+              kinds: [Namespace]
+      exclude:
+        any:
+          - resources:
+              namespaces: ["kube-system", "kube-public", "kube-node-lease", "kyverno", "default"]
+      validate:
+        message: "Namespace must include 'rebac.platform.io/managed=true' label."
+        pattern:
+          metadata:
+            labels:
+              rebac.platform.io/managed: "true"

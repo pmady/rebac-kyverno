@@ -1,0 +1,31 @@
+---
+# =============================================================================
+# Drift Test — Prove synchronize: true reverts manual edits
+# KyvernoCon Virtual 2026 — Pavan Madduri
+#
+# Usage (run AFTER 01 + 02):
+#   # Step 1: Show current viewer role (read-only)
+#   kubectl get role viewer -n tenant-demo -o yaml
+#
+#   # Step 2: Manually add "delete" to viewer (BAD — drift!)
+#   kubectl apply -f 03-drift-test.yaml
+#
+#   # Step 3: Wait ~5-10 seconds, then check again
+#   kubectl get role viewer -n tenant-demo -o yaml
+#   → "delete" is gone — Kyverno reverted the drift
+#
+# Why this matters:
+#   With synchronize: true, Kyverno owns the generated resource.
+#   Any manual modification gets automatically reconciled back
+#   to the policy-defined state. This is the core drift-prevention
+#   mechanism of the ReBAC engine.
+# =============================================================================
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: viewer
+  namespace: tenant-demo
+rules:
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch", "delete"]  # ← "delete" should NOT be here for viewer
